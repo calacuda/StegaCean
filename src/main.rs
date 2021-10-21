@@ -1,0 +1,46 @@
+use clap::{Arg, App};
+
+
+fn main() {
+    let matches = App::new("StegaCean")
+        .version("0.0.1")
+	.author("Calacuda. <https://github.com/calacuda>")
+        .about("used to encocde and decode hidden text files from pngs.")
+        .subcommand(App::new("encode")
+		    .about("embeds a message in an image file.")
+		    .version("0.0.1")
+		    .author("Calacuda. <https://github.com/calacuda>")
+		    .arg(Arg::new("message")
+			 .short('m')
+			 .long("message")
+			 .value_name("MESSAGE.txt")
+			 .about("text file to be hidden.")
+			 .takes_value(true)
+			 .required(true))
+		    .arg(Arg::new("picture")
+			 .short('p')
+			 .long("picture")
+			 .value_name("PICTURE.png")
+			 .about("image to hide the message in.")
+			 .takes_value(true)
+			 .required(true))
+		    .arg(Arg::new("OUPUT_FILE")
+			 .about("name of output file.")
+			 .required(true)
+			 .index(1)))
+	.subcommand(App::new("decode")
+		    .about("pulls a message out of an image file.")
+		    .version("0.0.1")
+		    .author("Calacuda. <https://github.com/calacuda>")
+		    .arg(Arg::new("IMAGE_FILE")
+			 .about("name of the input image file.")
+			 .required(true)
+			 .index(1))
+		    .arg(Arg::new("OUPUT_FILE")
+			 .about("name of output file.")
+			 .required(true)
+			 .index(2)))
+	.get_matches();
+
+    println!("{:#?}", matches);
+}
