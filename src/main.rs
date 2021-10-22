@@ -129,7 +129,12 @@ fn encode(args: &ArgMatches) -> Result<&str, &str> {
 	    ci += 1;
 	    c = message[ci];
 	}
-	new_file.push(make_byte(byte, byte & checkers[i%8] > 0, c%2 == 0));
+	if ci < message.len() - 1 {
+	    new_file.push(make_byte(byte, byte & checkers[i%8] > 0, c%2 == 0));
+	}
+	else {
+	    new_file.push(byte);
+	}
 	// prgrs::writeln(&format!("{:?}", byte.to_be_bytes()));
 	continue
     }
@@ -160,13 +165,14 @@ fn write_to_file(path: &str, bytes: Vec<u8>) {
 	Ok(f) => f,
 	Err(e) => panic!("file error: {}", e),
     };
-    
+    /*
     for ch in bytes {
 	//let c: char = ch as char;
 	//f.write(c);
-	print!("{}  ", ch);
+	//print!("{}  ", ch);
     }
-    // f.write_all(&bytes);
+     */
+    f.write_all(&bytes);
 }
 
 fn decode(args: &ArgMatches) -> Result<&str, &str> {
