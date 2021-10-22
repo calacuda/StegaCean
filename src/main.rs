@@ -18,8 +18,12 @@ use image::io::Reader as ImageReader;
 use prgrs::{Prgrs, writeln, Length};
 //use std::io::Bytes;
 use std::fs;
+use std::str;
 use std::net::SocketAddr;
 use std::error::Error;
+use std::path::Path;
+use std::fs::File;
+use std::io::prelude::*;
 
 
 fn get_args() -> ArgMatches {
@@ -136,10 +140,54 @@ fn encode(args: &ArgMatches) -> Result<&str, &str> {
     Ok(out_file)
 }
 
+fn make_u8(bits: [u8; 8]) -> u8 {
+    let place_vals = [128, 64, 32, 16, 8, 4, 2, 1];
+    let mut sum = 0;
+    
+    for i in 0..8 {
+	if bits[i] > 0 {
+	    sum += place_vals[i];
+	}
+    }
+
+    return sum
+}
+
+fn write_to_file(path: &str, bytes: Vec<u8>) {
+    let p = Path::new(path);
+
+    let mut f = match File::create(p) {
+	Ok(f) => f,
+	Err(e) => panic!("file error: {}", e),
+    };
+    
+    for ch in bytes {
+	//let c: char = ch as char;
+	//f.write(c);
+	print!("{}  ", ch);
+    }
+    // f.write_all(&bytes);
+}
+
 fn decode(args: &ArgMatches) -> Result<&str, &str> {
     let haystack = args.value_of("IMAGE_FILE").ok_or("")?;
     let out_file = args.value_of("OUPUT_FILE").ok_or("")?;
-    println!("{:#?}", haystack);
+
+    let img_bytes = read_image(haystack).unwrap();
+    let mut new_file: Vec<u8> = Vec::new();
+    let mut cur_byte: [u8; 8] = [0; 8];
+
+    for i in Prgrs::new(0..img_bytes.len(), img_bytes.len()) {
+	cur_byte[i%8] = img_bytes[i] & 0b0000_0001;
+	
+	if i%8 == 7 && i != 0 {
+	    new_file.push(make_u8(cur_byte));
+	    cur_byte = [0; 8];
+	}
+    }
+
+    write_to_file(out_file, new_file);
+
     Ok(out_file)
 }
 
