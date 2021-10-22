@@ -65,20 +65,10 @@ fn get_args() -> ArgMatches {
 	.get_matches();
 }
 
-fn read_image(fname: &str) -> Option<image::RgbImage> {
+fn read_image(fname: &str) -> Option<Vec<u8>> {
     let raw_img = ImageReader::open(fname).ok()?.decode().ok()?;
-    return Some(raw_img.into_rgb8());
+    return Some(raw_img.into_rgb8().to_vec());
 }
-
-/*
-fn set_low_byte(number:u8, byte:u8) -> u8 {
-    let mut arr = number.to_be_bytes();
-    //writeln(&format!("{:#?}", arr));
-    return arr
-    //arr[3] = byte;
-    //return u8::from_be_bytes(arr)
-}
- */
 
 fn and(byte: u8, dat:u8) -> u8 {
     return byte & dat;
@@ -97,9 +87,17 @@ fn make_byte(byte: u8, encode_one: bool, even:bool) -> u8 {
     };
 }
 
-fn encode(args: &ArgMatches) -> Result<(), &str> {
+fn get_dim(path: &str) -> (u32, u32) {
+    match image::image_dimensions(path) {
+	Ok(val) => val,
+	Err(mes) => panic!("{}", mes), 
+    }
+}
+
+fn encode(args: &ArgMatches) -> Result<&str, &str> {
     let needle = args.value_of("message").ok_or("")?;
     let haystack = args.value_of("picture").ok_or("")?;
+    let out_file = args.value_of("OUPUT_FILE").ok_or("")?;
     println!("ecoding   :  {:#?}", needle);
     println!("into file :  {:#?}", haystack);
 
@@ -115,7 +113,8 @@ fn encode(args: &ArgMatches) -> Result<(), &str> {
 	Ok(thing) => thing.as_bytes().to_owned(),
 	Err(error) => panic!("{}", error),
     };
-    let raw_bytes = read_image(haystack).unwrap().to_vec();
+    let raw_bytes = read_image(haystack).unwrap();
+    let (width, height) = get_dim(haystack);
     let mut new_file: Vec<u8> = Vec::new();
     let mut ci = 0;
     let mut c = message[ci];
@@ -131,22 +130,17 @@ fn encode(args: &ArgMatches) -> Result<(), &str> {
 	continue
     }
     println!("data encoded!");
-    //println!("{:#?}", new_file);
-    let mut same = true;
-    for i in Prgrs::new(0..raw_bytes.len(), raw_bytes.len()) {
-	same = same && (new_file[i] == raw_bytes[i]); 
-    }
-    println!("files are same {}", same);
+    //println!("{:#?} : {:#?}", &new_file[10..20], &raw_bytes[10..20]);
+    image::save_buffer(out_file, &new_file, width, height, image::ColorType::Rgb8);
     
-    //let out_img = ImageReader::new(Cursor::new(bytes)).decode()?;
-    
-    Ok(())
+    Ok(out_file)
 }
 
-fn decode(args: &ArgMatches) -> Result<(), &str> {
-    let file = args.value_of("IMAGE_FILE").ok_or("")?;
-    println!("{:#?}", file);
-    Ok(())
+fn decode(args: &ArgMatches) -> Result<&str, &str> {
+    let haystack = args.value_of("IMAGE_FILE").ok_or("")?;
+    let out_file = args.value_of("OUPUT_FILE").ok_or("")?;
+    println!("{:#?}", haystack);
+    Ok(out_file)
 }
 
 fn main() {
@@ -163,7 +157,7 @@ fn main() {
     };
 
     match result {
-	Ok(_) => println!("done!"),
+	Ok(fname) => println!("data writen to <{}>", fname),
 	Err(_) => println!("Error, try again."),
     };
     
