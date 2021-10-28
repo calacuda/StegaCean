@@ -8,4 +8,5 @@ edition = "2021"
 [dependencies]
 clap = "3.0.0-beta.5"
 prgrs = "0.6.4"
-image = "0.23.14"
+lodepng = "3.4"
+rgb = "0.8"
