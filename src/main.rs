@@ -9,12 +9,12 @@
 use clap::{App, AppSettings, Arg, ArgMatches};
 
 use prgrs::{writeln, Length, Prgrs};
-use std::fs;
-use std::io::Write;
-use std::fs::File;
-use std::path::Path;
-use std::io::BufWriter;
 use rgb::*;
+use std::fs;
+use std::fs::File;
+use std::io::BufWriter;
+use std::io::Write;
+use std::path::Path;
 
 fn get_args() -> ArgMatches {
     return App::new("StegaCean")
@@ -100,6 +100,11 @@ fn or(byte: u8, dat: u8) -> u8 {
 }
 
 fn make_byte(byte: u8, encode_one: bool, even: bool) -> u8 {
+    /*
+    writeln(&format!(
+        "make_byte args :  {:?}, {:?}, {:?}",
+        byte, encode_one, even,
+    ));*/
     return match (encode_one, even) {
         (true, true) => or(byte, 0b0000_0001),
         (false, true) => or(byte, 0b0000_0000),
@@ -170,8 +175,9 @@ fn encode(args: &ArgMatches) -> Result<&str, &str> {
     let needle = args.value_of("message").ok_or("")?;
     let haystack = args.value_of("picture").ok_or("")?;
     let out_fn = args.value_of("OUPUT_FILE").ok_or("")?;
+
     println!("ecoding   :  {:#?}", needle);
-    println!("into file :  {:#?}", haystack);
+    println!("into file :  {:#?}", out_fn);
 
     let message: Vec<u8> = match fs::read_to_string(needle) {
         Ok(thing) => thing.as_bytes().to_owned(),
@@ -182,27 +188,44 @@ fn encode(args: &ArgMatches) -> Result<&str, &str> {
         Ok(thing) => thing,
         Err(e) => panic!("{:#?}", e),
     };
+
     let mut idat: Vec<u8> = image.buffer.as_bytes().to_owned();
 
     // println!("{:#?}", image);
 
-
-    let checkers: [u8; 8] = [128, 64, 32, 16, 8, 4, 2, 1]
-    let mut ci = 0;
-    let mut c = message[ci];
+    let checkers: [u8; 8] = [128, 64, 32, 16, 8, 4, 2, 1];
+    let mut mess_i = 0;
+    let mut bit_i = 0;
+    let mut char = message[mess_i];
 
     for i in Prgrs::new(0..idat.len(), idat.len()) {
         let mut byte: u8 = idat[i].clone();
-        if (i % 8 == 0 && ci < message.len() - 1) {
-            c = message[ci];
-            ci += 1;
+        char = message[mess_i];
+        bit_i = i % 8;
+
+        if (i % 8 == 0 && mess_i < message.len() - 1 && i != 0) {
+            mess_i += 1;
         }
-        if ci < message.len() - 1 {
+
+        if mess_i < message.len() - 1 {
             //new_file.push(make_byte(byte, byte & checkers[i % 8] > 0, c % 2 == 0));
-            idat[i] = make_byte(byte, byte & checkers[i % 8] > 0, c % 2 == 0);
+            let new_byte = make_byte(
+                byte,
+                (char as u8 & checkers[i % 8]) == checkers[i % 8],
+                byte & 1 == 0,
+            );
+            if i < 100 {
+                writeln(&format!("char {:?}", char as u8));
+                writeln(&format!("message index {:?}", mess_i));
+                writeln(&format!("is even?  {:?}", char as u8 & checkers[i % 8]));
+                writeln(&format!("{:?}", byte & 1 == 0));
+                writeln(&format!("new_byte : {:?}", new_byte));
+            }
+            idat[i] = new_byte;
         } else {
             idat[i] = byte;
         }
+
         // prgrs::writeln(&format!("{:?}", byte.to_be_bytes()));
         continue;
     }
@@ -261,13 +284,23 @@ fn decode(args: &ArgMatches) -> Result<&str, &str> {
     let mut cur_byte: [u8; 8] = [0; 8];
 
     for i in Prgrs::new(0..img_bytes.len(), img_bytes.len()) {
-        cur_byte[i % 8] = img_bytes[i] & 1;
+        let mod_two = img_bytes[i] % 2;
+        cur_byte[i % 8] = mod_two;
+
+        if i < 100 {
+            writeln(&format!("byte : {:?}", img_bytes[i]));
+            writeln(&format!("mod_two : {:?}", mod_two));
+        }
         // writeln(&format!("cur_byte :  {:?}", cur_byte));
 
         if i % 8 == 7 && i != 0 {
             let dec = make_u8(cur_byte);
+            if i < 100 {
+                // writeln(&format!("{:?}", cur_byte));
+                writeln(&format!("i = {:?}  :  dec = {:?}", i, dec));
+            }
             new_file.push(dec);
-            writeln(&format!("{:?}", dec));
+            //writeln(&format!("{:?}", dec));
             cur_byte = [0; 8];
         }
     }
