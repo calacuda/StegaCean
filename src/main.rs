@@ -113,65 +113,83 @@ fn make_byte(byte: u8, encode_one: bool, even: bool) -> u8 {
     };
 }
 
-/*
-fn encode(args: &ArgMatches) -> Result<&str, &str> {
-    let needle = args.value_of("message").ok_or("")?;
-    let haystack = args.value_of("picture").ok_or("")?;
-    let out_fn = args.value_of("OUPUT_FILE").ok_or("")?;
-    println!("ecoding   :  {:#?}", needle);
-    println!("into file :  {:#?}", haystack);
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let message: Vec<u8> = match fs::read_to_string(needle) {
-        Ok(thing) => thing.as_bytes().to_owned(),
-        Err(error) => panic!("{}", error),
-    };
-
-    let (dim, mut idat) = read_image(haystack);
-
-
-    let checkers: [u8; 8] = [
-        0b1000_0000,
-        0b0100_0000,
-        0b0010_0000,
-        0b0001_0000,
-        0b0000_1000,
-        0b0000_0100,
-        0b0000_0010,
-        0b0000_0001,
-    ];
-
-    let mut ci = 0;
-    let mut c = message[ci];
-
-    for i in Prgrs::new(0..idat.len(), idat.len()) {
-        let mut byte: u8 = idat[i].clone();
-        if (i % 8 == 0 && ci < message.len() - 1) {
-            c = message[ci];
-            ci += 1;
-        }
-        if ci < message.len() - 1 {
-            //new_file.push(make_byte(byte, byte & checkers[i % 8] > 0, c % 2 == 0));
-            idat[i] = make_byte(byte, byte & checkers[i % 8] > 0, c % 2 == 0);
-        } else {
-            idat[i] = byte;
-        }
-        // prgrs::writeln(&format!("{:?}", byte.to_be_bytes()));
-        continue;
+    #[test]
+    fn test_get_byte_ar() {
+        assert_eq!(get_byte_ar(255), vec![1, 1, 1, 1, 1, 1, 1, 1]);
+        assert_eq!(get_byte_ar(398), vec![1, 1, 0, 0, 0, 1, 1, 1, 0]);
+        assert_eq!(get_byte_ar(64), vec![1, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(get_byte_ar(0), vec![0]);
+        assert_eq!(get_byte_ar(1), vec![1]);
     }
-    println!("data encoded!");
-    //println!("{:#?} : {:#?}", &new_file[10..20], &raw_bytes[10..20]);
-    // image::save_buffer(out_fn, &new_file, width, height, image::ColorType::Rgb8);
-    let out_file = File::create(out_fn).unwrap();
-    let ref mut w = BufWriter::new(out_file);
-    let mut encoder = png::Encoder::new(w, dim.0, dim.1);
-    let mut writer = encoder.write_header().unwrap();
-    writer.write_image_data(&idat).unwrap();
-
-    Ok(out_fn)
 }
-*/
 
-fn encode(args: &ArgMatches) -> Result<&str, &str> {
+fn get_byte_ar(num: i32) -> Vec<u8> {
+    let mut place_vals: Vec<i32> = vec![1];
+    let mut b = 1;
+
+    while b <= (num / 2) {
+        b = b * 2;
+        place_vals.push(b);
+    }
+
+    place_vals.reverse();
+
+    let mut byte: Vec<u8> = Vec::new();
+    let mut total = 0;
+
+    for i in 0..place_vals.len() {
+        if total + place_vals[i] <= num {
+            byte.push(1);
+            total += place_vals[i];
+        } else {
+            byte.push(0);
+        }
+    }
+
+    return byte;
+}
+
+fn encode_start(idat: &mut Vec<u8>, mess_len: usize, start_bookend: Vec<u8>) {
+    let mess_size = get_byte_ar(mess_len.try_into().unwrap());
+
+    for i in 0..mess_size.len() {
+        let byte: u8 = idat[i];
+        let new_byte = make_byte(byte, mess_size[i] == 1, byte & 1 == 0);
+        // if i < 100 {
+        //     writeln(&format!("is even?  {:?}", mess_size[i] == 1));
+        //     writeln(&format!("{:?}", byte & 1 == 0));
+        //     writeln(&format!("new_byte : {:?}", new_byte));
+        // }
+        idat[i] = new_byte;
+    }
+
+    for i in mess_size.len()..mess_size.len() + start_bookend.len() {
+        println!("{:?}", i);
+        let byte: u8 = idat[i];
+        let c = get_byte_ar(start_bookend[i - mess_size.len()].into());
+
+        for bit in c.into_iter() {
+            let new_byte = make_byte(byte, bit == 1, byte & 1 == 0);
+
+            // if i < 100 {
+            //     writeln(&format!(
+            //         "is even?  {:?}",
+            //         mess_size[i - mess_size.len()] == 1
+            //     ));
+            //     writeln(&format!("{:?}", byte & 1 == 0));
+            //     writeln(&format!("new_byte : {:?}", new_byte));
+            // }
+
+            idat[i] = new_byte
+        }
+    }
+}
+
+fn encode<'a>(args: &'a ArgMatches, start: &'a str) -> Result<&'a str, &'a str> {
     let needle = args.value_of("message").ok_or("")?;
     let haystack = args.value_of("picture").ok_or("")?;
     let out_fn = args.value_of("OUPUT_FILE").ok_or("")?;
@@ -197,8 +215,11 @@ fn encode(args: &ArgMatches) -> Result<&str, &str> {
     let mut mess_i = 0;
     let mut bit_i = 0;
     let mut char = message[mess_i];
+    let mess_len = message.len();
 
-    for i in Prgrs::new(0..idat.len(), idat.len()) {
+    encode_start(&mut idat, mess_len, start.as_bytes().to_owned());
+
+    for i in Prgrs::new(mess_len + start.as_bytes().len()..idat.len(), idat.len()) {
         let mut byte: u8 = idat[i].clone();
         char = message[mess_i];
         bit_i = i % 8;
@@ -267,7 +288,7 @@ fn write_to_file(path: &str, bytes: Vec<u8>) {
     f.write_all(&bytes);
 }
 
-fn decode(args: &ArgMatches) -> Result<&str, &str> {
+fn decode<'a>(args: &'a ArgMatches, start: &'a str) -> Result<&'a str, &'a str> {
     let haystack = args.value_of("IMAGE_FILE").ok_or("")?;
     let out_fn = args.value_of("OUPUT_FILE").ok_or("")?;
 
@@ -283,22 +304,25 @@ fn decode(args: &ArgMatches) -> Result<&str, &str> {
     let mut new_file: Vec<u8> = Vec::new();
     let mut cur_byte: [u8; 8] = [0; 8];
 
+    // get the length of text. and start location.
+    for i in 0..img_bytes.len() {}
+
     for i in Prgrs::new(0..img_bytes.len(), img_bytes.len()) {
         let mod_two = img_bytes[i] % 2;
         cur_byte[i % 8] = mod_two;
 
-        if i < 100 {
-            writeln(&format!("byte : {:?}", img_bytes[i]));
-            writeln(&format!("mod_two : {:?}", mod_two));
-        }
+        // if i < 100 {
+        //     writeln(&format!("byte : {:?}", img_bytes[i]));
+        //     writeln(&format!("mod_two : {:?}", mod_two));
+        // }
         // writeln(&format!("cur_byte :  {:?}", cur_byte));
 
         if i % 8 == 7 && i != 0 {
             let dec = make_u8(cur_byte);
-            if i < 100 {
-                // writeln(&format!("{:?}", cur_byte));
-                writeln(&format!("i = {:?}  :  dec = {:?}", i, dec));
-            }
+            // if i < 100 {
+            //     // writeln(&format!("{:?}", cur_byte));
+            //     writeln(&format!("i = {:?}  :  dec = {:?}", i, dec));
+            // }
             new_file.push(dec);
             //writeln(&format!("{:?}", dec));
             cur_byte = [0; 8];
@@ -311,6 +335,8 @@ fn decode(args: &ArgMatches) -> Result<&str, &str> {
 }
 
 fn main() {
+    let start = "START";
+
     let matches = get_args();
     let args = match matches.subcommand() {
         Some(thing) => thing,
@@ -318,9 +344,9 @@ fn main() {
     };
 
     let result = match args.0 {
-        "encode" => encode(args.1),
-        "decode" => decode(args.1),
-        _ => Err("teh hobbits to isengard!"),
+        "encode" => encode(args.1, &start),
+        "decode" => decode(args.1, &start),
+        _ => Err("the hobbits to isengard!"),
     };
 
     match result {
