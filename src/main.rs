@@ -7,13 +7,10 @@
  */
 
 use clap::{App, AppSettings, Arg, ArgMatches};
-
-// use prgrs::{writeln, Length, Prgrs};
 use lodepng;
 use rgb::*;
 use std::fs;
 use std::fs::File;
-use std::io::BufWriter;
 use std::io::Write;
 use std::path::Path;
 
@@ -74,28 +71,6 @@ fn get_args() -> ArgMatches {
         .get_matches();
 }
 
-fn and(byte: u8, dat: u8) -> u8 {
-    return byte & dat;
-}
-
-fn or(byte: u8, dat: u8) -> u8 {
-    return byte | dat;
-}
-
-fn make_byte(byte: u8, encode_one: bool, even: bool) -> u8 {
-    /*
-    writeln(&format!(
-        "make_byte args :  {:?}, {:?}, {:?}",
-        byte, encode_one, even,
-    ));*/
-    return match (encode_one, even) {
-        (true, true) => or(byte, 0b0000_0001),
-        (false, true) => or(byte, 0b0000_0000),
-        (true, false) => and(byte, 0b0000_0001),
-        (false, false) => and(byte, 0b0000_0000),
-    };
-}
-
 fn encode(args: &ArgMatches) -> Result<&str, &str> {
     let needle = args.value_of("message").ok_or("")?;
     let haystack = args.value_of("picture").ok_or("")?;
@@ -134,7 +109,10 @@ fn encode(args: &ArgMatches) -> Result<&str, &str> {
     }
 
     // println!("data encoded!");
-    lodepng::encode32_file(out_fn, &idat, image.width, image.height);
+    match lodepng::encode32_file(out_fn, &idat, image.width, image.height) {
+        Ok(_) => {}
+        Err(e) => panic!("error while writing pixel data to file {}", e),
+    };
 
     Ok(out_fn)
 }
@@ -175,13 +153,10 @@ fn write_to_file(path: &str, bytes: Vec<u8>) {
         Err(e) => panic!("file error: {}", e),
     };
 
-    // for ch in bytes {
-    //     let c: char = ch as char;
-    //     // f.write(c);
-    //     print!("{}  ", c);
-    // }
-
-    f.write_all(&bytes);
+    match f.write_all(&bytes) {
+        Ok(_) => {}
+        Err(e) => panic!("error while writing text to file: {}", e),
+    };
 }
 
 fn decode(args: &ArgMatches) -> Result<&str, &str> {
@@ -200,23 +175,13 @@ fn decode(args: &ArgMatches) -> Result<&str, &str> {
     let mut new_file: Vec<u8> = Vec::new();
     let mut cur_byte: [u8; 8] = [0; 8];
 
-    // for i in Prgrs::new(0..img_bytes.len(), img_bytes.len()) { // slows execution A LOT
     for i in 0..img_bytes.len() {
         let mod_two = img_bytes[i] % 2;
         cur_byte[i % 8] = mod_two;
 
-        // if i < 100 {
-        //     writeln(&format!("byte : {:?}", img_bytes[i]));
-        //     writeln(&format!("mod_two : {:?}", mod_two));
-        // }
-        // writeln(&format!("cur_byte :  {:?}", cur_byte));
-
         if i % 8 == 7 && i != 0 {
             let dec = make_u8(cur_byte);
-            // if i < 100 {
-            //     // writeln(&format!("{:?}", cur_byte));
-            //     // writeln(&format!("i = {:?}  :  dec = {:?}", i, dec));
-            // }
+
             if dec == 4 {
                 // this breaks when we encounter the first EOT character
                 break;
