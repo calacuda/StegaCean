@@ -246,7 +246,7 @@ fn main() {
     let result = match args.0 {
         "encode" => encode(args.1),
         "decode" => decode(args.1),
-        _ => Err("teh hobbits to isengard!"),
+        _ => Err("the hobbits to isengard!"),
     };
 
     match result {
