@@ -176,8 +176,8 @@ fn encode(args: &ArgMatches) -> Result<&str, &str> {
     let haystack = args.value_of("picture").ok_or("")?;
     let out_fn = args.value_of("OUPUT_FILE").ok_or("")?;
 
-    println!("ecoding   :  {:#?}", needle);
-    println!("into file :  {:#?}", out_fn);
+    // println!("ecoding   :  {:#?}", needle);
+    // println!("into file :  {:#?}", out_fn);
 
     let message: Vec<u8> = match fs::read_to_string(needle) {
         Ok(thing) => thing.as_bytes().to_owned(),
@@ -271,8 +271,8 @@ fn decode(args: &ArgMatches) -> Result<&str, &str> {
     let haystack = args.value_of("IMAGE_FILE").ok_or("")?;
     let out_fn = args.value_of("OUPUT_FILE").ok_or("")?;
 
-    println!("decoding  :  {:#?}", haystack);
-    println!("into file :  {:#?}", out_fn);
+    // println!("decoding  :  {:#?}", haystack);
+    // println!("into file :  {:#?}", out_fn);
 
     let image = match lodepng::decode32_file(haystack) {
         Ok(thing) => thing,
