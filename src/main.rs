@@ -102,10 +102,13 @@ fn encode(args: &ArgMatches) -> Result<&str, &str> {
     // adds EOT char to the end of the sequence
     add_bits(&0b0000_0100, &mut message_bits);
 
+    // let mut idat_i = 3;
+
     // encode the data
     for i in 0..message_bits.len() {
         let bit: bool = message_bits[i];
-        idat[i] = if bit { idat[i] | 1 } else { idat[i] & 0 };
+        idat[i] = if bit { idat[i] | 1 } else { idat[i] & 254 };
+        // idat_i += 4;
     }
 
     // println!("data encoded!");
