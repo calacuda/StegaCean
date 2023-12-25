@@ -3,7 +3,7 @@
  *
  * STEGAnography crustaCEAN, steganography program in rust.
  *
- * By: Eoghan West | MIT Licence | Epoche: Oct 21, 2021
+ * By: Eoghan West | MIT Licence | Epoch: Oct 21, 2021
  */
 
 use clap::{App, AppSettings, Arg, ArgMatches};
