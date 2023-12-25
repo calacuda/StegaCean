@@ -105,9 +105,11 @@ fn encode(args: &ArgMatches) -> Result<&str, &str> {
     // let mut idat_i = 3;
 
     // encode the data
-    for i in 0..message_bits.len() {
-        let bit: bool = message_bits[i];
-        idat[i] = if bit { idat[i] | 1 } else { idat[i] & 254 };
+    for (i, bit) in message_bits.iter().enumerate() {
+        // let loc_bit: bool = bit as bool;
+        if i & 4 != 0 {
+            idat[i] = if *bit { idat[i] | 1 } else { idat[i] & 254 };
+        }
         // idat_i += 4;
     }
 
@@ -179,6 +181,10 @@ fn decode(args: &ArgMatches) -> Result<&str, &str> {
     let mut cur_byte: [u8; 8] = [0; 8];
 
     for i in 0..img_bytes.len() {
+        if i % 4 == 0 {
+            continue;
+        }
+
         let mod_two = img_bytes[i] % 2;
         cur_byte[i % 8] = mod_two;
 
